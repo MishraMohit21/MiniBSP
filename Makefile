@@ -24,13 +24,21 @@ $(SRC)/buildroot-$(BUILDROOT_VER):
 clean-src:
 	rm -rf $(SRC)
 
+JOBS ?= 4
+
 KSRC := $(SRC)/linux-$(LINUX_VER)
 BSRC := $(SRC)/buildroot-$(BUILDROOT_VER)
 KOUT := out/linux
 BOUT := out/buildroot
 KMAKE := $(MAKE) -C $(KSRC) O=$(abspath $(KOUT)) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
 CLEAN_PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -vxE '\.|' | paste -sd:)
-BMAKE := env PATH="$(CLEAN_PATH)" $(MAKE) -C $(BSRC) O=$(abspath $(BOUT)) BR2_DL_DIR=$(abspath out/dl)
+BMAKE := env PATH="$(CLEAN_PATH)" $(MAKE) -C $(BSRC) O=$(abspath $(BOUT)) BR2_DL_DIR=$(abspath out/dl) -j$(JOBS)
+
+# Modern fast linker flags (mold preferred, then lld)
+USE_LINKER ?= $(if $(shell which mold 2>/dev/null),mold,$(if $(shell which ld.lld 2>/dev/null),lld,))
+ifneq ($(USE_LINKER),)
+    FAST_LDFLAGS := -fuse-ld=$(USE_LINKER)
+endif
 
 QEMU := qemu-system-aarch64 -M virt -cpu cortex-a72 -smp 2 -m 1G -nographic \
 	-kernel $(KOUT)/arch/arm64/boot/Image \
@@ -47,7 +55,7 @@ $(KOUT)/.config: configs/bsp.fragment
 	$(KMAKE) olddefconfig
 
 kernel: $(KOUT)/.config
-	$(KMAKE) -j$$(nproc) Image modules dtbs
+	$(KMAKE) -j$(JOBS) Image modules dtbs
 	@$(MAKE) --no-print-directory kernel-check
 
 kernel-check:

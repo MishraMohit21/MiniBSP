@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 fail=0
-for t in aarch64-linux-gnu-gcc qemu-system-aarch64 make gcc bc bison flex cpio rsync unzip wget git; do
+for t in aarch64-linux-gnu-gcc qemu-system-aarch64 make gcc bc bison flex cpio rsync unzip wget git mold ld.lld; do
   if command -v "$t" >/dev/null; then
     printf '%-24s OK  %s\n' "$t" "$("$t" --version 2>&1 | head -1)"
   else
